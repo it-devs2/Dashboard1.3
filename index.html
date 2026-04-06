@@ -289,6 +289,34 @@
                         <h3>รวมจำนวนเงินตามวันที่ทำเอกสารจ่าย</h3>
                     </div>
                     <div class="date-summary-filters">
+                    <div class="date-summary-filters">
+                        <!-- Upgraded Multi-Select Creditor Search for Date Summary -->
+                        <div class="date-filter-group date-search multi-select-creditor">
+                            <label for="payDocCreditorFilter">ชื่อเจ้าหนี้</label>
+                            <div class="search-box" role="combobox" aria-haspopup="listbox" aria-expanded="false" style="min-width: 240px; max-width: 500px;">
+                                <span class="search-icon"><i class='bx bx-search'></i></span>
+                                <div id="selectedPayDocChips" class="selected-chips" hidden></div>
+                                <input type="text" id="payDocCreditorFilter" class="search-input" autocomplete="off"
+                                    placeholder="เลือกชื่อเจ้าหนี้...">
+                                <button type="button" id="payDocSearchClear" class="search-clear" aria-label="ล้างการค้นหา" hidden>✕</button>
+                            </div>
+                            <div id="payDocCreditorDropdown" class="creditor-dropdown" hidden style="width: 100%; max-width: 500px; left: 0;">
+                                <div class="creditor-dropdown-header">
+                                    <strong>เลือกเจ้าหนี้</strong>
+                                    <button type="button" id="payDocClearSelection" class="clear-selection-btn">ล้าง</button>
+                                </div>
+                                <div id="payDocCreditorListPanel" class="creditor-list"></div>
+                            </div>
+                        </div>
+
+                        <!-- New Urgency Filter (Column N) -->
+                        <div class="date-filter-group">
+                            <label for="payDocUrgencyFilter">ความเร่งด่วน</label>
+                            <select id="payDocUrgencyFilter">
+                                <option value="all">ทั้งหมด</option>
+                            </select>
+                        </div>
+
                         <div class="date-filter-group">
                             <label for="payDocStatusFilter">สถานะ</label>
                             <select id="payDocStatusFilter">

@@ -14,6 +14,7 @@ let barChart;
 // Creditor dropdown data + selection state
 let creditorData = [];
 let selectedCreditors = new Set();
+let selectedPayDocCreditors = new Set(); // New for Date Summary multi-select
 let selectedOverdueRanges = new Set();
 let overdueRanges = [
     { label: '1-30', min: 1, max: 30 },
@@ -638,6 +639,59 @@ const setupEventListeners = () => {
     if (payDocMonthFilter) payDocMonthFilter.addEventListener('change', updateDateSummary);
     if (payDocYearFilter) payDocYearFilter.addEventListener('change', updateDateSummary);
 
+    // New PayDoc multi-select search and urgency filters
+    const payDocCreditorFilter = document.getElementById('payDocCreditorFilter');
+    const payDocSearchClear = document.getElementById('payDocSearchClear');
+    const payDocUrgencyFilter = document.getElementById('payDocUrgencyFilter');
+    const payDocClearSelection = document.getElementById('payDocClearSelection');
+
+    if (payDocCreditorFilter) {
+        payDocCreditorFilter.addEventListener('input', (e) => {
+            const q = e.target.value || '';
+            filterPayDocCreditorDropdown(q, false);
+            if (payDocSearchClear) payDocSearchClear.hidden = q.trim() === '';
+            updateDateSummary();
+        });
+
+        payDocCreditorFilter.addEventListener('click', (e) => {
+            e.stopPropagation();
+            filterPayDocCreditorDropdown(e.target.value || '', true);
+        });
+
+        if (payDocSearchClear) {
+            payDocSearchClear.addEventListener('click', (e) => {
+                e.stopPropagation();
+                payDocCreditorFilter.value = '';
+                payDocSearchClear.hidden = true;
+                filterPayDocCreditorDropdown('');
+                payDocCreditorFilter.focus();
+                updateDateSummary();
+            });
+        }
+
+        if (payDocClearSelection) {
+            payDocClearSelection.addEventListener('click', () => {
+                selectedPayDocCreditors.clear();
+                document.querySelectorAll('.paydoc-creditor-checkbox').forEach(cb => cb.checked = false);
+                updatePayDocSelectedChips();
+                updateDateSummary();
+            });
+        }
+        
+        // Ensure outside clicks specifically for the bottom search close the dropdown
+        document.addEventListener('click', (e) => {
+            const dateSearchArea = document.querySelector('.date-search.multi-select-creditor');
+            if (dateSearchArea && !dateSearchArea.contains(e.target)) {
+                const dd = document.getElementById('payDocCreditorDropdown');
+                if (dd) dd.hidden = true;
+            }
+        });
+    }
+
+    if (payDocUrgencyFilter) {
+        payDocUrgencyFilter.addEventListener('change', updateDateSummary);
+    }
+
     // Advanced search segmented control and filter panel
     const segButtons = document.querySelectorAll('.seg-btn');
     segButtons.forEach(btn => {
@@ -1061,6 +1115,10 @@ const fetchData = async () => {
             }
             creditorData = creditors;
             renderCreditorDropdown(creditors);
+            
+            // Populate bottom multi-select creditor dropdown and urgency filter
+            renderPayDocCreditorDropdown(creditors);
+            populateUrgencyDropdown(allData);
 
             updateDashboard();
         } else {
@@ -1074,6 +1132,26 @@ const fetchData = async () => {
         loading.classList.add('hidden');
     }
 };
+
+// Populate the bottom 'Urgency/Priority' dropdown dynamically
+function populateUrgencyDropdown(data) {
+    const urgencyFilter = document.getElementById('payDocUrgencyFilter');
+    if (!urgencyFilter) return;
+
+    // Get unique values from column N (item.status)
+    const uniqueValues = [...new Set(data.map(item => (item.status || '').toString().trim()))]
+        .filter(Boolean)
+        .sort();
+
+    // Preserve 'all' option
+    urgencyFilter.innerHTML = '<option value="all">ทั้งหมด</option>';
+    uniqueValues.forEach(val => {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = val;
+        urgencyFilter.appendChild(opt);
+    });
+}
 
 
 // ---- Creditor dropdown helpers ----
@@ -1180,6 +1258,98 @@ function closeCreditorDropdown() {
     const dd = document.getElementById('creditorDropdown');
     if (dd) dd.hidden = true;
     updateHeaderSpacing();
+}
+
+// ---- Date Summary Creditor dropdown helpers ----
+function renderPayDocCreditorDropdown(list = []) {
+    const panel = document.getElementById('payDocCreditorListPanel');
+    if (!panel) return;
+    panel.innerHTML = '';
+    if (!list || list.length === 0) {
+        panel.innerHTML = '<div class="creditor-empty">ไม่พบชื่อเจ้าหนี้</div>';
+        return;
+    }
+    const frag = document.createDocumentFragment();
+    list.forEach((name, idx) => {
+        const label = document.createElement('label');
+        label.className = 'creditor-item';
+
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.className = 'paydoc-creditor-checkbox';
+        chk.dataset.name = name;
+        chk.id = `paydoc_creditor_chk_${idx}`;
+        if (selectedPayDocCreditors.has(name)) chk.checked = true;
+
+        const span = document.createElement('span');
+        span.className = 'creditor-name';
+        span.textContent = name;
+
+        label.appendChild(chk);
+        label.appendChild(span);
+        frag.appendChild(label);
+    });
+    panel.appendChild(frag);
+
+    // wire checkbox change events
+    panel.querySelectorAll('.paydoc-creditor-checkbox').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            const nm = e.target.dataset.name;
+            if (e.target.checked) selectedPayDocCreditors.add(nm);
+            else selectedPayDocCreditors.delete(nm);
+            updatePayDocSelectedChips();
+            updateDateSummary();
+        });
+    });
+}
+
+function filterPayDocCreditorDropdown(q = '', forceOpen = false) {
+    const query = (q || '').toString().trim().toLowerCase();
+    const filtered = creditorData.filter(n => n.toLowerCase().includes(query));
+    renderPayDocCreditorDropdown(filtered);
+    const dropdown = document.getElementById('payDocCreditorDropdown');
+    if (!dropdown) return;
+    // Only open the dropdown when forced (user clicked) or when user typed
+    // something (query length > 0) or when there are already selected creditors.
+    if (forceOpen || query.length > 0 || (selectedPayDocCreditors && selectedPayDocCreditors.size > 0)) {
+        dropdown.hidden = false;
+    } else {
+        dropdown.hidden = true;
+    }
+}
+
+function updatePayDocSelectedChips() {
+    const container = document.getElementById('selectedPayDocChips');
+    if (!container) return;
+    container.innerHTML = '';
+    if (selectedPayDocCreditors.size === 0) {
+        container.hidden = true;
+        return;
+    }
+    container.hidden = false;
+    selectedPayDocCreditors.forEach(name => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        const text = document.createElement('span');
+        text.className = 'chip-name';
+        text.textContent = name;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chip-remove';
+        btn.setAttribute('aria-label', `ลบ ${name}`);
+        btn.textContent = '✕';
+        btn.addEventListener('click', () => {
+            selectedPayDocCreditors.delete(name);
+            const allChecks = Array.from(document.querySelectorAll('.paydoc-creditor-checkbox'));
+            const match = allChecks.find(c => c.dataset.name === name);
+            if (match) match.checked = false;
+            updatePayDocSelectedChips();
+            updateDateSummary();
+        });
+        chip.appendChild(text);
+        chip.appendChild(btn);
+        container.appendChild(chip);
+    });
 }
 
 // ---- Overdue Range dropdown helpers ----
@@ -1475,15 +1645,29 @@ const updateDateSummary = () => {
     const payDocStatusVal = document.getElementById('payDocStatusFilter')?.value || 'รอโอน';
     const payDocMonthVal = document.getElementById('payDocMonthFilter')?.value || 'all';
     const payDocYearVal = document.getElementById('payDocYearFilter')?.value || 'all';
+    const payDocCreditorVal = document.getElementById('payDocCreditorFilter')?.value.toLowerCase() || '';
+    const payDocUrgencyVal = document.getElementById('payDocUrgencyFilter')?.value || 'all';
 
     // Filter from ALL data (independent from top filters) by paymentStatus + payDoc month/year
-    // NOTE: intentionally do NOT apply the global creditor search selection here —
-    // the date-summary is kept independent per user request.
+    // Also include new creditor search and urgency filters.
     const filteredForPayDoc = allData.filter(item => {
         const matchStatus = payDocStatusVal === 'all' || (item.paymentStatus && item.paymentStatus.toString().includes(payDocStatusVal));
         const matchMonth = payDocMonthVal === 'all' || (item.payDocMonth && item.payDocMonth === payDocMonthVal);
         const matchYear = payDocYearVal === 'all' || (item.payDocYear && parseInt(item.payDocYear) === parseInt(payDocYearVal));
-        return matchStatus && matchMonth && matchYear;
+        
+        // Creditor match: support both typing AND multi-select chips
+        let matchCreditor = true;
+        if (selectedPayDocCreditors.size > 0) {
+            matchCreditor = selectedPayDocCreditors.has(item.docNo);
+        } else {
+            matchCreditor = payDocCreditorVal === '' || 
+                (item.docNo && item.docNo.toLowerCase().includes(payDocCreditorVal)) ||
+                (item.creditor && item.creditor.toLowerCase().includes(payDocCreditorVal));
+        }
+            
+        const matchUrgency = payDocUrgencyVal === 'all' || (item.status && item.status.toString().trim() === payDocUrgencyVal);
+
+        return matchStatus && matchMonth && matchYear && matchCreditor && matchUrgency;
     });
 
     // Group data by payDoc date (column H)

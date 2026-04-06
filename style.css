@@ -839,14 +839,17 @@ select option {
     top: calc(100% + 8px);
     left: 0;
     width: 420px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-    z-index: 60;
+    background: rgba(18, 20, 36, 0.98); /* Solid dark background */
+    border: 1px solid rgba(167, 139, 250, 0.3); /* Defined border */
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.7), 0 0 20px rgba(99, 102, 241, 0.1);
+    z-index: 9999; /* Higher priority to stay on top of charts/sections */
     max-height: 320px;
-    overflow: auto;
+    overflow: hidden; /* Header stays, list scrolls */
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(20px);
 }
 
 .creditor-dropdown .creditor-dropdown-header {
@@ -870,8 +873,25 @@ select option {
 .creditor-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 4px;
+    gap: 2px;
+    overflow-y: auto;
+    margin-top: 10px;
+    padding-right: 4px;
+}
+
+/* Custom premium scrollbar for the list */
+.creditor-list::-webkit-scrollbar {
+    width: 5px;
+}
+.creditor-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+}
+.creditor-list::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.4);
+    border-radius: 10px;
+}
+.creditor-list::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-primary);
 }
 
 .creditor-item {
@@ -1143,7 +1163,7 @@ select option {
     color: var(--text-muted);
 }
 
-/* Make the '犧｢犧ｱ犧�ｹ�ｸ｡犹謂ｸ籾ｸｶ犧�ｸ≒ｸｳ犧ｫ犧吭ｸ�' card amount right-aligned and closer to the card edge */
+/* Make the '犧｢犧ｱ犧ｹｸ｡犹謂ｸ籾ｸｶ犧ｸ≒ｸｳ犧ｫ犧吭ｸ' card amount right-aligned and closer to the card edge */
 .summary-layout .card-notdue {
     padding-right: 18px;
     /* slightly reduce right padding so number sits nearer the edge */
@@ -1329,6 +1349,24 @@ select option {
     flex-direction: column;
     gap: 5px;
     min-width: 145px;
+    position: relative; /* Ensure absolute dropdowns are relative to this group */
+}
+
+/* Ensure the dropdown in Date Summary opens UPWARDS so it doesn't get cut off at the bottom of the page */
+.date-summary-filters .creditor-dropdown {
+    top: auto;
+    bottom: calc(100% + 10px);
+    margin-bottom: 0;
+    width: 420px;
+    max-height: 260px; /* Tighter height to avoid covering too much chart area above */
+    box-shadow: 0 -15px 50px rgba(0, 0, 0, 0.8);
+    background: rgba(16, 18, 30, 0.99) !important; /* Extremely solid at bottom */
+    animation: slideUpDropdown 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+@keyframes slideUpDropdown {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .date-filter-group label {
@@ -1338,33 +1376,36 @@ select option {
 }
 
 .date-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 16px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 20px;
+    padding: 10px 5px 32px 5px; /* Room for scrollbar */
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
 }
 
-@media (min-width: 768px) {
-    .date-summary-grid {
-        grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-        gap: 18px;
-    }
+/* Premium horizontal scrollbar for the carousel */
+.date-summary-grid::-webkit-scrollbar {
+    height: 6px;
 }
-
-@media (min-width: 1024px) {
-    .date-summary-grid {
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 20px;
-    }
+.date-summary-grid::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
 }
-
-@media (min-width: 1440px) {
-    .date-summary-grid {
-        grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-        gap: 22px;
-    }
+.date-summary-grid::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.25);
+    border-radius: 10px;
+}
+.date-summary-grid::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-primary);
 }
 
 .date-card {
+    flex: 0 0 340px; /* Fixed width for horizontal layout */
+    scroll-snap-align: start;
     min-height: 220px;
     background: linear-gradient(135deg, rgba(28, 32, 58, 0.95), rgba(16, 18, 30, 0.98));
     border: 1px solid rgba(88, 101, 242, 0.3);
